@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Google Dorking Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .input-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .category-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            margin-bottom: 25px;
+        }
+
+        .category-title {
+            font-size: 1.5em;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-icon {
+            font-size: 1.2em;
+            transition: transform 0.3s;
+        }
+
+        .toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .dorks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .dorks-grid.hidden {
+            display: none;
+        }
+
+        .dork-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .dork-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .dork-card h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .dork-query {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            color: #555;
+            word-break: break-word;
+            margin-bottom: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: opacity 0.3s;
+            width: 100%;
+        }
+
+        .search-btn:hover {
+            opacity: 0.9;
+        }
+
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .dorks-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Advanced Google Dorking Tool</h1>
+            <p>Professional reconnaissance and OSINT tool</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="targetSite">Target Domain (e.g., target.com):</label>
+                <input type="text" id="targetSite" placeholder="example.com" />
+            </div>
+            <div class="input-group">
+                <label for="searchTerm">Additional Search Term (optional):</label>
+                <input type="text" id="searchTerm" placeholder="password, admin, api, etc." />
+            </div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div id="categoriesContainer"></div>
+    </div>
+
+    <script>
+        const dorkCategories = {
+            "API & Endpoints": [
+                'site:{site} (inurl:api OR inurl:apis OR inurl:graphql OR inurl:swagger OR inurl:v1 OR inurl:v2 OR inurl:v3) (filetype:json OR filetype:yaml OR filetype:xml)',
+                'site:{site} inurl:"/config/"',
+                'site:{site} filetype:json inurl:"/api/"',
+            ],
+            "Sensitive Files": [
+                'site:*.{site} (ext:doc OR ext:docx OR ext:odt OR ext:pdf OR ext:rtf OR ext:ppt OR ext:pptx OR ext:csv OR ext:xls OR ext:xlsx OR ext:txt OR ext:xml OR ext:json OR ext:zip OR ext:rar OR ext:md OR ext:log OR ext:bak OR ext:conf OR ext:sql)',
+                'site:{site} ext:sql',
+                'site:{site} ext:bak',
+                'site:{site} filetype:pdf "confidential" OR "internal use only"',
+                'site:{site} filetype:xls OR filetype:csv "employee salary" OR "payroll"',
+                'site:{site} filetype:docx "restricted" OR "not for public release"',
+            ],
+            "Configuration Files": [
+                'site:{site} ext:xml | ext:conf | ext:cnf | ext:reg | ext:inf | ext:rdp | ext:cfg | ext:txt | ext:ora | ext:env | ext:ini',
+                'site:{site} filetype:env',
+                'site:{site} ext:env | ext:ini | ext:conf intext:"password"',
+                'site:{site} filetype:config "password=" OR "apikey="',
+                'site:{site} intitle:"index of" "config.php"',
+                'site:{site} filetype:php inurl:"/config/"',
+            ],
+            "Credentials & Secrets": [
+                'site:*.{site} intext:"username" intext:"password" -git',
+                'site:*.{site} filetype:txt OR filetype:log "username" OR "password"',
+                'site:{site} filetype:env "DB_PASSWORD=" OR "DB_USER="',
+                'site:{site} filetype:php OR filetype:js OR filetype:env "DB_PASSWORD="',
+                'site:{site} "password" OR "api_key" OR "secret_key"',
+                'site:{site} intext:"DB_PASSWORD" | intext:"db_user"',
+                'site:{site} filetype:php intext:"password"',
+                'site:{site} filetype:xml intext:"username" intext:"password"',
+                'site:{site} ext:yaml | ext:yml intext:"password" | intext:"secret"',
+            ],
+            "Admin & Login Pages": [
+                'inurl:admin site:*.{site}',
+                'site:{site} inurl:admin',
+                'site:*.{site} inurl:admin OR inurl:login OR inurl:portal',
+                'site:{site} intitle:"admin panel" | inurl:"/admin"',
+                'site:{site} "admin panel" OR "restricted access"',
+                'site:{site} inurl:admin OR inurl:dashboard OR inurl:secure',
+                'site:{site} inurl:signup | inurl:register | intitle:Signup',
+            ],
+            "API Keys & Tokens": [
+                'site:*.{site} -inurl:(login signup) "api_key" filetype:json | yaml',
+                'site:{site} filetype:json "AWS_ACCESS_KEY_ID=" OR "AWS_SECRET_ACCESS_KEY="',
+                'site:{site} intext:"AWS_SECRET_ACCESS_KEY" | intext:"aws_access_key_id"',
+                'site:{site} filetype:json intext:"api_key" OR intext:"access_token"',
+                'site:{site} filetype:js intext:"secret" OR intext:"apiKey"',
+                'site:{site} filetype:json "google_api_key=" OR "firebase_api_key="',
+                'site:{site} intext:"api_key"',
+                'site:{site} intext:"access_token"',
+                'site:{site} intext:"secret_key"',
+                'site:{site} intext:"client_secret"',
+                'site:{site} intext:"auth_token"',
+                'site:{site} intext:"bearer token"',
+            ],
+            "Database Files": [
+                'site:{site} ext:sql | ext:mdb | ext:dbf',
+                'site:{site} filetype:sql "database dump" OR "backup"',
+                'site:{site} filetype:mdb',
+                'filetype:sql "insert into" (pass|passwd|password)',
+                'filetype:sql ("values * MD5" | "values * password" | "values * encrypt")',
+            ],
+            "Backup Files": [
+                'site:{site} ext:bkf | ext:bkp | ext:bak | ext:old | ext:backup',
+                'site:{site} intitle:"index of" "backup"',
+                'site:{site} filetype:bak',
+                'site:{site} intitle:"index of" intitle:"backup"',
+            ],
+            "Git Repositories": [
+                'inurl:"/.git" {site} -github',
+                'site:{site} ext:git intext:"token"',
+            ],
+            "Log Files": [
+                'site:{site} filetype:log',
+                'site:{site} filetype:log intext:"token"',
+                'site:{site} filetype:log OR filetype:txt "error log" OR "debug log"',
+                'filetype:log inurl:"password.log"',
+                'filetype:log "PHP Parse error" | "PHP Warning" | "PHP Error"',
+            ],
+            "Email Addresses": [
+                'site:{site} "@{site}"',
+                '"email" OR "contact" OR "admin" "@{site}"',
+                'site:{site} "employee email" OR "staff contact"',
+            ],
+            "Directory Listings": [
+                'site:{site} intitle:"index of"',
+                'site:{site} intitle:"index of" "parent directory"',
+                'site:{site} intitle:"index of" "private" OR "confidential"',
+                'site:{site} intitle:"index of" "backup" OR "database"',
+                'intitle:"index of" /"chat/logs"',
+                'intitle:"Index of /" +.htaccess',
+            ],
+            "PHP Files": [
+                'ext:php site:*.{site}',
+                'site:{site} filetype:php inurl:"/admin/" intext:"password"',
+                'filetype:php "password"',
+            ],
+            "Private Keys": [
+                'site:{site} filetype:pem OR filetype:key "BEGIN RSA PRIVATE KEY"',
+                'site:{site} "BEGIN OPENSSH PRIVATE KEY"',
+                'site:{site} intext:"-----BEGIN PRIVATE KEY-----"',
+                'filetype:pem intext:private',
+            ],
+            "Financial Data": [
+                'site:{site} intext:"credit card number" OR "CVV" OR "Visa" OR "MasterCard"',
+                'site:{site} intext:"bank account number" OR "routing number"',
+                'site:{site} filetype:xls OR filetype:csv "financial report"',
+            ],
+            "SQL Errors": [
+                'site:{site} intext:"sql syntax near" | intext:"syntax error has occurred" | intext:"incorrect syntax near" | intext:"unexpected end of SQL command" | intext:"Warning: mysql_connect()" | intext:"Warning: mysql_query()" | intext:"Warning: pg_connect()"',
+                'site:{site} intext:"SQL Server Driver][SQL Server]Line 1: Incorrect syntax near"',
+            ],
+            "PHP Errors": [
+                'site:{site} "PHP Parse error" | "PHP Warning" | "PHP Error"',
+                'site:{site} intext:"Fatal error: Call to undefined function"',
+            ],
+            "Open Redirects": [
+                'site:{site} inurl:redir | inurl:url | inurl:redirect | inurl:return | inurl:src=http | inurl:r=http',
+            ],
+            "WordPress": [
+                'site:{site} inurl:wp-content | inurl:wp-includes',
+                'site:{site} filetype:js inurl:"/wp-content/"',
+            ],
+            "Apache Struts": [
+                'site:{site} ext:action | ext:struts | ext:do',
+            ],
+            "Jenkins": [
+                'site:{site} intitle:"Dashboard [Jenkins]"',
+                'intitle:"Dashboard [Jenkins]"',
+            ],
+            "Traefik": [
+                'intitle:traefik inurl:8080/dashboard "{site}"',
+            ],
+            "Cloud Storage": [
+                'site:.s3.amazonaws.com | site:storage.googleapis.com | site:amazonaws.com "{site}"',
+            ],
+            "Code Sharing Sites": [
+                'site:ideone.com | site:codebeautify.org | site:codeshare.io | site:codepen.io | site:repl.it | site:jsfiddle.net "{site}"',
+            ],
+            "Git Hosting": [
+                'site:github.com | site:gitlab.com | site:bitbucket.org "{site}"',
+                'site:github.com "api_key" OR "access_token" OR "client_secret" "{site}"',
+            ],
+            "Pastebin Sites": [
+                'site:pastebin.com "{site}"',
+                'site:justpaste.it | site:pastebin.com "{site}"',
+            ],
+            "Project Management": [
+                'site:trello.com | site:*.atlassian.net "{site}"',
+            ],
+            "Stack Overflow": [
+                'site:stackoverflow.com "{site}"',
+            ],
+            "LinkedIn": [
+                'site:linkedin.com employees {site}',
+            ],
+            "Subdomains": [
+                'site:*.{site}',
+                'site:*.*.{site}',
+            ],
+        };
+
+        const targetSiteInput = document.getElementById('targetSite');
+        const searchTermInput = document.getElementById('searchTerm');
+        const categoriesContainer = document.getElementById('categoriesContainer');
+        const statsDiv = document.getElementById('stats');
+
+        function updateDorks() {
+            const site = targetSiteInput.value.trim();
+            const term = searchTermInput.value.trim();
+            
+            categoriesContainer.innerHTML = '';
+            let totalDorks = 0;
+
+            Object.keys(dorkCategories).forEach(category => {
+                const section = document.createElement('div');
+                section.className = 'category-section';
+                
+                const title = document.createElement('div');
+                title.className = 'category-title';
+                title.innerHTML = `
+                    <span>${category} (${dorkCategories[category].length})</span>
+                    <span class="toggle-icon">▼</span>
+                `;
+                
+                const grid = document.createElement('div');
+                grid.className = 'dorks-grid';
+                
+                dorkCategories[category].forEach(dorkTemplate => {
+                    totalDorks++;
+                    let query = dorkTemplate;
+                    
+                    if (site) {
+                        query = query.replace(/{site}/g, site);
+                    } else {
+                        query = query.replace(/{site}/g, '[domain]');
+                    }
+                    
+                    if (term && !query.includes(term)) {
+                        query += ` "${term}"`;
+                    }
+                    
+                    const card = document.createElement('div');
+                    card.className = 'dork-card';
+                    card.innerHTML = `
+                        <div class="dork-query">${query}</div>
+                        <button class="search-btn" ${!site ? 'disabled' : ''}>
+                            Search on Google
+                        </button>
+                    `;
+                    
+                    if (site) {
+                        card.querySelector('.search-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                            window.open(googleUrl, '_blank');
+                        });
+                    }
+                    
+                    grid.appendChild(card);
+                });
+                
+                title.addEventListener('click', () => {
+                    grid.classList.toggle('hidden');
+                    title.querySelector('.toggle-icon').classList.toggle('collapsed');
+                });
+                
+                section.appendChild(title);
+                section.appendChild(grid);
+                categoriesContainer.appendChild(section);
+            });
+
+            statsDiv.textContent = `📊 Total: ${totalDorks} Google Dorks across ${Object.keys(dorkCategories).length} categories`;
+        }
+
+        targetSiteInput.addEventListener('input', updateDorks);
+        searchTermInput.addEventListener('input', updateDorks);
+        updateDorks();
+    </script>
+</body>
+</html>
